@@ -1,9 +1,12 @@
 /*
- * Altoxymeter v2.2 — M5Stack CoreS3 + MAX30100 + BME688
+ * Altoxymeter v2.3 — M5Stack CoreS3 + MAX30100 + BME688
  *
- * Port A (red):   BME688   SDA=2, SCL=1 → Wire1 (peripheral 1)
- * Port B (black):  MAX30100 SDA=9, SCL=8 → Wire2 (peripheral 0)
+ * Port A (red):   BME688   SDA=2, SCL=1 → Wire (I2C bus 0)
+ * Port B (black): MAX30100 SDA=9, SCL=8 → Wire1 (I2C bus 1)
  * CSV to microSD card. RTC synced via NTP.
+ *
+ * FIX v2.3: Properly isolate sensors to separate I2C buses
+ * to prevent conflicts. Each sensor gets its own dedicated bus.
  */
 
 #include <Wire.h>
@@ -34,11 +37,13 @@ const char* NY_TZ = "EST5EDT,M3.2.0/2,M11.1.0/2";
 #define SCL_PORT_B  8
 #define CSV_PATH "/readings.csv"
 
+// I2C Bus Assignment:
+// - Wire  (default, bus 0): BME688 on Port A
+// - Wire1 (I2C bus 1):       MAX30100 on Port B
 extern TwoWire Wire1;
-TwoWire Wire2(0);
 
-Adafruit_BME680 bme(&Wire1);
-PulseOximeter pox;
+Adafruit_BME680 bme(&Wire);      // BME688 uses Wire (bus 0)
+PulseOximeter pox;               // MAX30100 uses Wire1 (bus 1)
 
 float gPressure = 0;
 float gAlt      = 0;
@@ -69,7 +74,7 @@ void setup()
     delay(200);
 
     Serial.println("\n==========================================");
-    Serial.println("  Altoxymeter v2.2 (CoreS3)");
+    Serial.println("  Altoxymeter v2.3 (CoreS3)");
     Serial.println("==========================================\n");
 
     // Force bus power
@@ -89,7 +94,7 @@ void setup()
     M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
     M5.Lcd.setTextSize(2);
     M5.Lcd.setCursor(10, 10);
-    M5.Lcd.println("Altoxymeter v2.2");
+    M5.Lcd.println("Altoxymeter v2.3");
     M5.Lcd.setTextSize(1);
 
     // ── microSD ──
@@ -103,34 +108,20 @@ void setup()
         if (f) { f.println("date,time,spo2_pct,altitude_ft"); f.close(); }
     }
 
-    // ── Wire1 → Port A (BME688) ──
-    Wire1.begin(SDA_PORT_A, SCL_PORT_A, 100000UL);
-    delay(100);
+    // ── I2C Bus Initialization ──
+    // Initialize Wire1 for MAX30100 (Port B) first
+    // Using non-standard pins, must be done before Wire may conflict
+    Wire1.begin(SDA_PORT_B, SCL_PORT_B, 400000UL);
+    delay(50);
 
-    // ── Wire2 → Port B (MAX30100) ──
-    Wire2.begin(SDA_PORT_B, SCL_PORT_B, 400000UL);
-    delay(100);
+    // Wire (default) for BME688 (Port A) - may already be initialized by M5.begin()
+    // Re-initialize to ensure correct pins for Port A
+    Wire.begin(SDA_PORT_A, SCL_PORT_A);
+    Wire.setClock(100000UL);
+    delay(50);
 
-    // ── MAX30100 ──
+    // ── BME688 (Wire / Port A) ──
     M5.Lcd.setCursor(10, 55);
-    M5.Lcd.print("MAX30100: ");
-    Serial.print("[MAX30100] ");
-    if (pox.begin(Wire2)) {
-        pox.setOnBeatDetectedCallback(onBeatDetected);
-        poxOk = true;
-        M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
-        M5.Lcd.println("OK");
-        Serial.println("OK");
-    } else {
-        poxOk = false;
-        M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);
-        M5.Lcd.println("FAIL");
-        Serial.println("FAIL");
-    }
-    M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
-
-    // ── BME688 ──
-    M5.Lcd.setCursor(10, 70);
     M5.Lcd.print("BME688: ");
     Serial.print("[BME688] ");
     bmeOk = bme.begin(0x77);
@@ -145,6 +136,24 @@ void setup()
         M5.Lcd.println("OK");
         Serial.println("OK");
     } else {
+        M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);
+        M5.Lcd.println("FAIL");
+        Serial.println("FAIL");
+    }
+    M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+
+    // ── MAX30100 (Wire1 / Port B) ──
+    M5.Lcd.setCursor(10, 70);
+    M5.Lcd.print("MAX30100: ");
+    Serial.print("[MAX30100] ");
+    if (pox.begin(Wire1)) {
+        pox.setOnBeatDetectedCallback(onBeatDetected);
+        poxOk = true;
+        M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
+        M5.Lcd.println("OK");
+        Serial.println("OK");
+    } else {
+        poxOk = false;
         M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);
         M5.Lcd.println("FAIL");
         Serial.println("FAIL");
