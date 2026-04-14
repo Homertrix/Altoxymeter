@@ -14,6 +14,10 @@ SpO2, heart rate, and altitude monitor for M5Stack CoreS3.
 - **Data Logging** - CSV export to microSD card
 - **RTC Sync** - Automatic time synchronization via NTP
 
+## Display Preview
+
+![Altoxymeter Display](screenshot.png)
+
 ## Hardware Setup
 
 ### Required Components
