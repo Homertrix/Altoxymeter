@@ -17,12 +17,16 @@
 #include "MAX30100_PulseOximeter.h"
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const char* WIFI_SSID     = "47Harriet";
-const char* WIFI_PASS     = "eatmyshorts";
+// ⚠️  WiFi Credentials - SET THESE BEFORE UPLOADING!
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Replace with your WiFi network name (SSID) and password.
+// These are used to sync the RTC via NTP (internet time).
+const char* WIFI_SSID     = "YOUR_WIFI_SSID";
+const char* WIFI_PASS     = "YOUR_WIFI_PASSWORD";
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const float SEA_LEVEL_HPA = 1013.25;
 const unsigned long LOG_INTERVAL_MS = 5000;
 const char* NY_TZ = "EST5EDT,M3.2.0/2,M11.1.0/2";
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 #define SDA_PORT_A  2
 #define SCL_PORT_A  1
